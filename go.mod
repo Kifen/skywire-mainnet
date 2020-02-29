@@ -45,7 +45,7 @@ require (
 	sourcegraph.com/sqs/pbtypes v1.0.0 // indirect
 )
 
-//replace (
-//github.com/SkycoinProject/dmsg => ../dmsg
-//github.com/SkycoinProject/skywire-peering-daemon => ../skywire-peering-daemon
-//)
+replace (
+	github.com/SkycoinProject/dmsg => ../dmsg
+	github.com/SkycoinProject/skywire-peering-daemon => ../skywire-peering-daemon
+)
