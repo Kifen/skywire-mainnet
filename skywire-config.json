@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "visor": {
+    "static_public_key": "024ec47420176680816e0406250e7156465e4531f5b26057c9f6297bb0303558c7",
+    "static_secret_key": "42bca4df2f3189b28872d40e6c61aacd5e85b8e91f8fea65780af27c142419e5"
+  },
+  "dmsg": {
+    "discovery": "http://localhost:9090",
+    "sessions_count": 1
+  },
+  "dmsg_pty": {
+    "port": 233,
+    "authorization_file": "./local/visorA/dmsgpty/whitelist.json",
+    "cli_network": "unix",
+    "cli_address": "/tmp/visorA/dmsgpty.sock"
+  },
+  "stcp": {
+    "pk_table": {
+      "0348c941c5015a05c455ff238af2e57fb8f914c399aab604e9abb5b32b91a4c1fe":"localhost:9495"
+    },
+    "local_address":"localhost:9496"
+  },
+  "transport": {
+    "discovery": "http://localhost:9091",
+    "log_store": {
+      "type": "file",
+      "location": "./local/localA/transport_logs"
+    }
+  },
+  "routing": {
+    "setup_nodes": [
+      "02603d53d49b6575a0b8cee05b70dd23c86e42cd6cba99af769d61a6196ea2bcb1"
+    ],
+    "route_finder": "http://localhost:9092"
+  },
+  "apps": [
+    {
+      "app": "skychat",
+      "version": "1.0",
+      "auto_start": true,
+      "port": 1,
+      "args": []
+    }
+  ],
+  "trusted_visors": [],
+  "hypervisors": [
+    {
+      "public_key": "02396d2781016226543092a4020ee233b5e18679c1a5d84f6b452a5125e038755a",
+      "address": ":7080"
+    }
+  ],
+  "apps_path": "./bin/apps",
+  "local_path": "./local/localA",
+  "log_level": "info",
+  "interfaces": {
+    "rpc": "localhost:3436"
+  },
+  "app_server_sock_file": "/tmp/appserverA.sock",
+  "auto_start_spd": true
+}

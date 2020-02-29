@@ -26,7 +26,6 @@ pkg/visor/foo/
 /*-visor
 /*-cli
 /*-server
-/*.json
 /*.sh
 /*.log
 dmsgpty
