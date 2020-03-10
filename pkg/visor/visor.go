@@ -23,7 +23,6 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 	"github.com/SkycoinProject/dmsg/dmsgpty"
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/rjeczalik/notify"
 
 	"github.com/SkycoinProject/skywire-mainnet/internal/skyenv"
 	"github.com/SkycoinProject/skywire-mainnet/pkg/app/appcommon"
@@ -353,43 +352,34 @@ func (visor *Visor) RunDaemon() error {
 		return err
 	}
 
-	dir, err := ioutil.TempDir("", "named_pipes")
-	if err != nil {
+	socketFile := "/tmp/spd.sock"
+	lAddr := visor.conf.STCP.LocalAddr
+	pubKey := visor.conf.Visor.StaticPubKey.Hex()
+
+	if err := UnlinkSocketFiles(socketFile); err != nil {
 		return err
 	}
 
-	namedPipe := filepath.Join(dir, "stdout")
-	lAddr := visor.conf.STCP.LocalAddr
-	pubKey := visor.conf.Visor.StaticPubKey.Hex()
-	err = syscall.Mkfifo(namedPipe, 0600)
-	if err != nil {
+	if err := os.MkdirAll(filepath.Dir(socketFile), ownerRWX); err != nil {
+		logger.WithError(err).Debug("Failed to prepare unix file dir.")
 		return err
 	}
 
 	visor.spdCmd = exec.Command(bin)
-	if err := execute(visor.spdCmd, pubKey, lAddr, namedPipe); err != nil {
+	if err := execute(visor.spdCmd, pubKey, lAddr, socketFile); err != nil {
 		return err
 	}
 
-	visor.logger.Info("Opening named pipe for reading packets from skywire-peering-daemon")
-	stdOut, err := os.OpenFile(namedPipe, os.O_RDONLY, 0600)
-	if err != nil {
-		return err
-	}
-
+	visor.logger.WithField("addr", socketFile).
+		Info("Opening unix pipe")
 	if visor.conf.STCP.PubKeyTable == nil {
 		visor.conf.STCP.PubKeyTable = make(map[cipher.PubKey]string)
 	}
 
 	pubKeyTable := visor.conf.STCP.PubKeyTable
-	c := make(chan notify.EventInfo, 5)
-
-	err = watchNamedPipe(namedPipe, c)
-	if err != nil {
+	if err := serveSpd(socketFile, pubKeyTable, visor.conf.Interfaces.RPCAddress); err != nil {
 		return err
 	}
-
-	readSPDPacket(stdOut, c, pubKeyTable, visor.conf.Interfaces.RPCAddress)
 
 	return nil
 }

@@ -1,9 +1,7 @@
 package visor
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"net"
 	"net/rpc"
 	"os"
@@ -14,8 +12,6 @@ import (
 	"github.com/SkycoinProject/dmsg/cipher"
 	skycoin_cipher "github.com/SkycoinProject/skycoin/src/cipher"
 	"github.com/SkycoinProject/skycoin/src/util/logging"
-	"github.com/rjeczalik/notify"
-
 	spd "github.com/SkycoinProject/skywire-peering-daemon/pkg/daemon"
 
 	"github.com/SkycoinProject/skywire-mainnet/pkg/snet"
@@ -28,13 +24,13 @@ var (
 	spdMu           sync.Mutex
 )
 
-func execute(cmd *exec.Cmd, pubKey, lAddr, namedPipe string) error {
+func execute(cmd *exec.Cmd, pubKey, lAddr, socketFile string) error {
 	pk := fmt.Sprintf("SPD_PUBKEY=%s", pubKey)
 	la := fmt.Sprintf("SPD_LADDR=%s", lAddr)
-	nm := fmt.Sprintf("SPD_NAMED-PIPE=%s", namedPipe)
+	sf := fmt.Sprintf("SPD_SOCKETFILE=%s", socketFile)
 
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, pk, la, nm)
+	cmd.Env = append(cmd.Env, pk, la, sf)
 	cmd.Stdout = os.Stdout
 	if err := cmd.Start(); err != nil {
 		return err
@@ -71,30 +67,39 @@ func createTransport(pubKey string, rpcAddr string) (*TransportSummary, error) {
 	return tpSummary, nil
 }
 
-func watchNamedPipe(file string, c chan notify.EventInfo) error {
-	err := notify.Watch(file, c, notify.Write)
+func serveSpd(file string, m map[cipher.PubKey]string, rpcAddr string) error {
+	listener, err := net.Listen("unix", file)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func readSPDPacket(stdOut *os.File, c chan notify.EventInfo, m map[cipher.PubKey]string, rpcAddr string) {
-	// Read packets from named pipe
-	for {
-		var (
-			packet spd.Packet
-			buff   bytes.Buffer
-		)
-
-		<-c
-		_, err := io.Copy(&buff, stdOut)
+	defer func() {
+		err := listener.Close()
 		if err != nil {
-			logger.Error(err)
+			logger.WithError(err)
+		}
+	}()
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			return err
 		}
 
-		packet, err = spd.Deserialize(buff.Bytes())
+		go readPacket(conn, m, rpcAddr)
+	}
+}
+
+func readPacket(conn net.Conn, m map[cipher.PubKey]string, rpcAddr string) {
+	for {
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+		if err != nil {
+			logger.Warnf("error on read: %s", err)
+			break
+		}
+
+		packet, err := spd.Deserialize(buf[:n])
 		if err != nil {
 			logger.Error(err)
 		}
@@ -108,8 +113,8 @@ func readSPDPacket(stdOut *os.File, c chan notify.EventInfo, m map[cipher.PubKey
 		tp, err := createTransport(packet.PublicKey, rpcAddr)
 		if err != nil {
 			logger.Errorf("Couldn't establish transport to remote visor: %s", err)
+		} else {
+			logger.Infof("Transport established to remote visor: \n%s", tp.Remote)
 		}
-
-		logger.Infof("Transport established to remote visor: \n%s", tp.Remote)
 	}
 }

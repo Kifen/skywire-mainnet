@@ -27,7 +27,6 @@ require (
 	github.com/pkg/profile v1.3.0
 	github.com/prometheus/client_golang v1.3.0
 	github.com/prometheus/common v0.7.0
-	github.com/rjeczalik/notify v0.9.2
 	github.com/schollz/progressbar/v2 v2.15.0
 	github.com/securego/gosec v0.0.0-20200203094520-d13bb6d2420c // indirect
 	github.com/sirupsen/logrus v1.4.2
